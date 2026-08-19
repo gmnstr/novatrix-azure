@@ -24,11 +24,13 @@ import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
+from urllib.request import Request, urlopen
 
 TICKET_DIR = os.environ.get("NOVATRIX_TICKET_DIR", "/var/lib/novatrix/tickets")
 FORM_PATH = os.environ.get("NOVATRIX_FORM_PATH", "/var/www/novatrix/index.html")
 STORAGE_ACCOUNT = os.environ.get("NOVATRIX_STORAGE_ACCOUNT", "")
 BLOB_CONTAINER = os.environ.get("NOVATRIX_BLOB_CONTAINER", "tickets")
+FLOW_URL = os.environ.get("NOVATRIX_FLOW_URL", "").strip()
 HOST = os.environ.get("NOVATRIX_LISTEN_HOST", "127.0.0.1")
 PORT = int(os.environ.get("NOVATRIX_LISTEN_PORT", "8080"))
 
@@ -65,6 +67,21 @@ def upload_to_blob(ticket):
     client.get_container_client(BLOB_CONTAINER).upload_blob(
         blob_name, json.dumps(ticket, ensure_ascii=False), overwrite=False
     )
+
+
+def notify_flow(ticket):
+    """Best-effort POST to Power Automate HTTP trigger. No-op if unset."""
+    if not FLOW_URL:
+        return
+    payload = json.dumps(ticket, ensure_ascii=False).encode("utf-8")
+    req = Request(
+        FLOW_URL,
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urlopen(req, timeout=10) as resp:
+        resp.read()
 
 
 class TicketHandler(BaseHTTPRequestHandler):
@@ -123,6 +140,10 @@ class TicketHandler(BaseHTTPRequestHandler):
             upload_to_blob(ticket)
         except Exception as exc:  # noqa: BLE001 — fail closed to local disk
             self.log_error("blob upload skipped/failed (local copy kept): %s", exc)
+        try:
+            notify_flow(ticket)
+        except Exception as exc:  # noqa: BLE001 — flow is optional
+            self.log_error("flow notify skipped/failed (local copy kept): %s", exc)
 
     def _send_form(self):
         try:

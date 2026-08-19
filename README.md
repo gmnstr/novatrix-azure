@@ -6,9 +6,12 @@ och beskriver vad som finns, hur man återskapar miljön, och vad som bedöms.
 
 > **Ärlighetsnotis:** en live-deploy har körts i elevens prenumeration
 > (Sweden Central, `Standard_B2ats_v2` — `Standard_B1s` fanns inte på
-> den free-subben). Committade parametrar är placeholders (ingen SSH-nyckel
-> eller hem-IP i GitHub). Återskapa med egen `ssh-rsa`-nyckel och `/32`-CIDR.
-> v39 Power Automate kräver manuell import i M365-tenant. Riv dagligen.
+> den free-subben). B2ats_v2 är free-berättigad (750 h/mån) med rätt disk;
+> denna mall använder Standard_LRS + daglig rivning. VM:n har 1 GiB RAM.
+> Committade parametrar är placeholders. Återskapa via
+> `envs/novatrix.parameters.local.json` (gitignored). v39 Power Automate
+> kräver manuell tenant-återskapning. v40 Function är en odeployad stub.
+> Riv dagligen.
 
 ## Innehåll
 
@@ -46,16 +49,19 @@ Browser ──80──▶ nginx (reverse proxy) ──8080──▶ ticket_app.p
 
 ## Återskapa från repot
 
-1. Skapa en RSA-nyckel (Azure Linux-VM:er tar **inte** ed25519):
+1. Skapa en SSH-nyckel. Azure Linux-VM:er tar **ssh-rsa** och **ed25519**.
+   `deploy.sh` accepterar båda. RSA-exempel:
 
    ```bash
    ssh-keygen -t rsa -b 4096 -f ~/.ssh/novatrix -N ''
    ```
 
-2. Klistra in `~/.ssh/novatrix.pub` i `envs/novatrix.parameters.json`
-   (`adminSshPublicKey`). Sätt `allowedSshCidr` till din publika IP `/32`
-   (default `203.0.113.0/32` är TEST-NET, inte world-open). `deploy.sh`
-   vägrar placeholder-nyckel och `0.0.0.0/0` (override: `--allow-world-ssh`).
+2. Kopiera `envs/novatrix.parameters.json` → `envs/novatrix.parameters.local.json`
+   (gitignored). Klistra in `~/.ssh/novatrix.pub` som `adminSshPublicKey` och
+   sätt `allowedSshCidr` till din publika IP `/32`. `deploy.sh` föredrar
+   `.local.json` när filen finns. Default `203.0.113.0/32` är TEST-NET.
+   `deploy.sh` vägrar placeholder-nyckel och `0.0.0.0/0` (override:
+   `--allow-world-ssh`).
 
 3. Kör:
 

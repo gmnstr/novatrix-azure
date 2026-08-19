@@ -312,7 +312,7 @@
           "target_v3_type": "ResourceGroup"
         }
       ],
-      "properties": { "access": "private", "lock_access": true, "week": 37 }
+      "properties": { "access": "private", "network_restricted": true, "week": 37 }
     },
     {
       "v3_type": "BlobContainer",
@@ -329,7 +329,7 @@
           "target_v3_type": "ResourceGroup"
         }
       ],
-      "properties": { "access": "private", "lock_access": true, "week": 37 }
+      "properties": { "access": "private", "network_restricted": true, "week": 37 }
     },
     {
       "v3_type": "ArmTemplate",
@@ -407,7 +407,7 @@
           "target_v3_type": "TicketForm"
         }
       ],
-      "properties": { "trigger": "When a new response is submitted", "week": 39 }
+      "properties": { "trigger": "HTTP request", "week": 39 }
     },
     {
       "v3_type": "TeardownPlan",

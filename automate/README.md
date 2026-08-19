@@ -13,9 +13,14 @@ Logic App / the designer's code view and fix the placeholders.
 1. **HTTP trigger** (Request) — ticket JSON (same shape as `ticket_app.py`).
 2. **SharePoint PostItem** — write to a `Tickets` list.
    - `dataset` must be the **site URL** (`https://<tenant>.sharepoint.com/sites/novatrix`), not a site name.
-3. **Condition** on `category == critical`:
-   - **true** → Teams `PostMessageToConversation` (`poster`, `location`, `body/recipient`, `body/groupId`, `body/messageBody`)
+3. **Condition** on `category == critical` (form option **Kritiskt**):
+   - **true** → Teams `PostMessageToConversation` with
+     `body/recipient: { groupId: TEAM_ID, channelId: CHANNEL_ID }`
    - **else** → Outlook `SendEmailV2` (`emailMessage/To|Subject|Body`)
+
+The VM app POSTs to this HTTP trigger only when `NOVATRIX_FLOW_URL` is set
+on the unit (empty by default — chain is standalone until you paste the
+trigger URL).
 
 ## Manual steps (external)
 

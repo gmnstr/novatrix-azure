@@ -21,8 +21,13 @@ Deadlines följer kursplanen (söndag i respektive vecka). G = godkänt, VG = v�
   författningskällan.
 - **Ontologin** (`docs/` + `src/ontology/`) är kontrollplanet för verktygen —
   inte lärarbedömningsartefakten.
-- Inga live Azure-deployer har körts från detta repo; skripten finns för att
-  eleven/läraren ska kunna köra dem.
+- En live-deploy har körts (Sweden Central, `Standard_B2ats_v2`; `Standard_B1s`
+  saknades på free-subben). Committade parametrar är placeholders. Återskapa
+  med egen nyckel + `/32`-CIDR. Riv dagligen.
 - **v37 "låst åtkomst"** betyder nätverksregler (`networkAcls` default Deny +
   service endpoints) och RBAC/MI — inte `CanNotDelete`-resurslås (det skulle
   blockera daglig rivning).
+- **v39** är en manuell tenant-kedja (HTTP trigger). Appen POSTar dit endast om
+  `NOVATRIX_FLOW_URL` sätts på VM:n. Inte portal-zip-importabel.
+- **v40** Function-stubben (`infra/function.bicep`) är inte del av default
+  deploy; jämförelsedokumentet är G/VG-artefakten.

@@ -62,8 +62,10 @@
             "parameters": {
               "poster": "User",
               "location": "Channel",
-              "body/recipient": "REPLACE_WITH_TEAM_ID",
-              "body/groupId": "REPLACE_WITH_CHANNEL_ID",
+              "body/recipient": {
+                "groupId": "REPLACE_WITH_TEAM_ID",
+                "channelId": "REPLACE_WITH_CHANNEL_ID"
+              },
               "body/messageBody": "<p>Ny kritisk supportförfrågan från @{triggerBody()?['name']}: @{triggerBody()?['description']}</p>"
             }
           },

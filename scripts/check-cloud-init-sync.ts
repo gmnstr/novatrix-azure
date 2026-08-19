@@ -42,6 +42,9 @@ if (!cloudInit.includes("Environment=NOVATRIX_STORAGE_ACCOUNT=__NOVATRIX_STORAGE
 if (!cloudInit.includes("Environment=AZURE_CLIENT_ID=__NOVATRIX_MI_CLIENT_ID__")) {
   errors.push("cloud-init missing MI client-id placeholder");
 }
+if (cloudInit.includes("--break-system-packages")) {
+  errors.push("cloud-init still uses pip --break-system-packages (fails on Ubuntu 22.04 pip 22.0.2)");
+}
 
 if (errors.length) {
   for (const e of errors) console.error(`FAILED: ${e}`);

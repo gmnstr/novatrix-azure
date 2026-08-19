@@ -82,6 +82,30 @@ for (const bc of byType.get("BlobContainer") ?? []) {
   if (isPublic && lockClaimed) {
     fail("illegal_graph", `BlobContainer ${bc.external_id} is public but claims lock-access`);
   }
+  if (lockClaimed) {
+    fail("illegal_graph", `BlobContainer ${bc.external_id} claims lock_access but no Authorization/locks resource exists`);
+  }
+}
+
+// --- Cross-check: VM size in graph must match compute.bicep default -----------
+const computeBicep = readFileSync(join(root, "infra/compute.bicep"), "utf8");
+const bicepSize = computeBicep.match(/param vmSize string = '([^']+)'/)?.[1];
+if (bicepSize) {
+  for (const vm of byType.get("VirtualMachine") ?? []) {
+    const graphSize = vm.properties?.size as string | undefined;
+    if (graphSize && graphSize !== bicepSize) {
+      fail("illegal_graph", `VirtualMachine ${vm.external_id} size ${graphSize} != compute.bicep ${bicepSize}`);
+    }
+  }
+}
+const buildPath = join(root, "build/main.json");
+try {
+  const build = readFileSync(buildPath, "utf8");
+  if (bicepSize && !build.includes(bicepSize)) {
+    fail("illegal_graph", `build/main.json missing vmSize ${bicepSize} (stale ARM projection)`);
+  }
+} catch {
+  fail("illegal_graph", "build/main.json missing (v38 hand-in projection)");
 }
 
 // --- Rule 3: RoleAssignment.grantedTo target must be an identity type ---------

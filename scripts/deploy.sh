@@ -39,20 +39,28 @@ fi
 : "${AZ_RESOURCE_GROUP:=rg-novatrix}"
 : "${WEEK:=0}"
 
-PARAMETERS_FILE="$ROOT_DIR/envs/novatrix.parameters.json"
+TRACKED_PARAMETERS="$ROOT_DIR/envs/novatrix.parameters.json"
+LOCAL_PARAMETERS="$ROOT_DIR/envs/novatrix.parameters.local.json"
+if [ -f "$LOCAL_PARAMETERS" ]; then
+  PARAMETERS_FILE="$LOCAL_PARAMETERS"
+  echo "Using local parameters: envs/novatrix.parameters.local.json"
+else
+  PARAMETERS_FILE="$TRACKED_PARAMETERS"
+fi
 MAIN_TEMPLATE="$ROOT_DIR/infra/main.bicep"
 BUILD_FILE="$ROOT_DIR/build/main.json"
 
 if [ ! -f "$PARAMETERS_FILE" ]; then
   echo "Error: parameters file not found: $PARAMETERS_FILE" >&2
+  echo "Copy envs/novatrix.parameters.json to envs/novatrix.parameters.local.json and fill SSH key + /32 CIDR." >&2
   exit 1
 fi
 
 SSH_KEY="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["parameters"]["adminSshPublicKey"]["value"])' "$PARAMETERS_FILE")"
-if [[ ! "$SSH_KEY" =~ ^ssh-rsa\ AAAA[A-Za-z0-9+/]+=*(\ .*)?$ ]] || [[ "$SSH_KEY" == *placeholder* ]] || [[ "$SSH_KEY" == REPLACE_WITH* ]]; then
-  echo "Error: adminSshPublicKey is missing or invalid (Azure Linux VMs require ssh-rsa)." >&2
+if [[ ! "$SSH_KEY" =~ ^ssh-(rsa|ed25519)\ AAAA[A-Za-z0-9+/]+=*(\ .*)?$ ]] || [[ "$SSH_KEY" == *placeholder* ]] || [[ "$SSH_KEY" == REPLACE_WITH* ]]; then
+  echo "Error: adminSshPublicKey is missing or invalid (need ssh-rsa or ssh-ed25519)." >&2
   echo "Generate: ssh-keygen -t rsa -b 4096 -f ~/.ssh/novatrix -N ''" >&2
-  echo "Then put the contents of ~/.ssh/novatrix.pub into envs/novatrix.parameters.json" >&2
+  echo "Then put the pubkey into envs/novatrix.parameters.local.json (gitignored)." >&2
   exit 1
 fi
 
