@@ -1,0 +1,1006 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.46.1.21595",
+      "templateHash": "10922988304111665218"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "swedencentral",
+      "metadata": {
+        "description": "Main template composing the Novatrix course environment (weeks 34-38). Azure region for all resources. Course default: swedencentral."
+      }
+    },
+    "studentPrefix": {
+      "type": "string",
+      "defaultValue": "danlin",
+      "metadata": {
+        "description": "Student prefix used in the storage account name (stnovatrix<prefix>01)."
+      }
+    },
+    "adminUsername": {
+      "type": "string",
+      "defaultValue": "azureuser",
+      "metadata": {
+        "description": "Local admin username for the web VM."
+      }
+    },
+    "adminSshPublicKey": {
+      "type": "string",
+      "metadata": {
+        "description": "SSH public key for the local admin user (password auth disabled)."
+      }
+    },
+    "deployBastion": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Deploy Azure Bastion. Credit-safe default: false."
+      }
+    },
+    "allowedSshCidr": {
+      "type": "string",
+      "defaultValue": "203.0.113.0/32",
+      "metadata": {
+        "description": "CIDR allowed to reach SSH (port 22) when Bastion is off. Default is TEST-NET-3 (not world-open). Set to your public IP /32 before deploy."
+      }
+    }
+  },
+  "variables": {
+    "tags": {
+      "Application": "Novatrix",
+      "Environment": "Course",
+      "ManagedBy": "Bicep"
+    },
+    "storageAccountName": "[format('stnovatrix{0}01', parameters('studentPrefix'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "identity-novatrix",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "miName": {
+            "value": "id-novatrix-web"
+          },
+          "storageAccountName": {
+            "value": "[variables('storageAccountName')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.46.1.21595",
+              "templateHash": "435901175354823664"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "User-assigned managed identity (id-novatrix-web) with Storage Blob Data Contributor on the storage account."
+              }
+            },
+            "miName": {
+              "type": "string",
+              "defaultValue": "id-novatrix-web"
+            },
+            "storageAccountName": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            }
+          },
+          "variables": {
+            "storageBlobDataContributorRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
+              "name": "[parameters('miName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]"
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
+              "name": "[guid(parameters('storageAccountName'), parameters('miName'), variables('storageBlobDataContributorRoleDefinitionId'))]",
+              "properties": {
+                "roleDefinitionId": "[variables('storageBlobDataContributorRoleDefinitionId')]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('miName')), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('miName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "miId": {
+              "type": "string",
+              "metadata": {
+                "description": "User-assigned managed identity resource ID"
+              },
+              "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('miName'))]"
+            },
+            "miName": {
+              "type": "string",
+              "metadata": {
+                "description": "User-assigned managed identity name"
+              },
+              "value": "[parameters('miName')]"
+            },
+            "miPrincipalId": {
+              "type": "string",
+              "metadata": {
+                "description": "User-assigned managed identity principal ID"
+              },
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('miName')), '2023-01-31').principalId]"
+            },
+            "miClientId": {
+              "type": "string",
+              "metadata": {
+                "description": "User-assigned managed identity client ID (AZURE_CLIENT_ID on the VM)"
+              },
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('miName')), '2023-01-31').clientId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'storage-novatrix')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "network-novatrix",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "vnetName": {
+            "value": "vnet-novatrix-core"
+          },
+          "addressSpace": {
+            "value": "10.0.0.0/16"
+          },
+          "webSubnetName": {
+            "value": "snet-novatrix-web"
+          },
+          "webSubnetCidr": {
+            "value": "10.0.1.0/24"
+          },
+          "dataSubnetName": {
+            "value": "snet-novatrix-data"
+          },
+          "dataSubnetCidr": {
+            "value": "10.0.2.0/24"
+          },
+          "nsgWebName": {
+            "value": "nsg-novatrix-web"
+          },
+          "nsgDataName": {
+            "value": "nsg-novatrix-data"
+          },
+          "allowedSshCidr": {
+            "value": "[parameters('allowedSshCidr')]"
+          },
+          "deployBastion": {
+            "value": "[parameters('deployBastion')]"
+          },
+          "bastionName": {
+            "value": "bas-novatrix"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.46.1.21595",
+              "templateHash": "13008846123713877252"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Core network for Novatrix: vnet, web (public) + data (private) subnets, NSGs, optional Bastion."
+              }
+            },
+            "vnetName": {
+              "type": "string",
+              "defaultValue": "vnet-novatrix-core"
+            },
+            "addressSpace": {
+              "type": "string",
+              "defaultValue": "10.0.0.0/16"
+            },
+            "webSubnetName": {
+              "type": "string",
+              "defaultValue": "snet-novatrix-web"
+            },
+            "webSubnetCidr": {
+              "type": "string",
+              "defaultValue": "10.0.1.0/24"
+            },
+            "dataSubnetName": {
+              "type": "string",
+              "defaultValue": "snet-novatrix-data"
+            },
+            "dataSubnetCidr": {
+              "type": "string",
+              "defaultValue": "10.0.2.0/24"
+            },
+            "nsgWebName": {
+              "type": "string",
+              "defaultValue": "nsg-novatrix-web"
+            },
+            "nsgDataName": {
+              "type": "string",
+              "defaultValue": "nsg-novatrix-data"
+            },
+            "allowedSshCidr": {
+              "type": "string",
+              "defaultValue": "203.0.113.0/32",
+              "metadata": {
+                "description": "CIDR allowed to reach SSH (port 22) on the web subnet when Bastion is off. Default is TEST-NET-3 (not world-open)."
+              }
+            },
+            "deployBastion": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Deploy Azure Bastion Developer (free, Sweden Central). Credit-safe default: false."
+              }
+            },
+            "bastionName": {
+              "type": "string",
+              "defaultValue": "bas-novatrix"
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            }
+          },
+          "variables": {
+            "httpHttpsRules": [
+              {
+                "name": "AllowHTTPInbound",
+                "properties": {
+                  "description": "Allow HTTP inbound to web subnet",
+                  "protocol": "Tcp",
+                  "sourcePortRange": "*",
+                  "destinationPortRange": "80",
+                  "sourceAddressPrefix": "Internet",
+                  "destinationAddressPrefix": "*",
+                  "access": "Allow",
+                  "priority": 100,
+                  "direction": "Inbound"
+                }
+              },
+              {
+                "name": "AllowHTTPSInbound",
+                "properties": {
+                  "description": "Allow HTTPS inbound to web subnet",
+                  "protocol": "Tcp",
+                  "sourcePortRange": "*",
+                  "destinationPortRange": "443",
+                  "sourceAddressPrefix": "Internet",
+                  "destinationAddressPrefix": "*",
+                  "access": "Allow",
+                  "priority": 110,
+                  "direction": "Inbound"
+                }
+              }
+            ],
+            "sshFromHomeRule": [
+              {
+                "name": "AllowSSHFromHome",
+                "properties": {
+                  "description": "Allow SSH only from the configured CIDR",
+                  "protocol": "Tcp",
+                  "sourcePortRange": "*",
+                  "destinationPortRange": "22",
+                  "sourceAddressPrefix": "[parameters('allowedSshCidr')]",
+                  "destinationAddressPrefix": "*",
+                  "access": "Allow",
+                  "priority": 120,
+                  "direction": "Inbound"
+                }
+              }
+            ],
+            "sshFromBastionRule": [
+              {
+                "name": "AllowBastionSSH",
+                "properties": {
+                  "description": "Allow SSH from the VNet (Bastion Developer hop). Home SSH is off when Bastion is on.",
+                  "protocol": "Tcp",
+                  "sourcePortRange": "*",
+                  "destinationPortRange": "22",
+                  "sourceAddressPrefix": "VirtualNetwork",
+                  "destinationAddressPrefix": "*",
+                  "access": "Allow",
+                  "priority": 120,
+                  "direction": "Inbound"
+                }
+              }
+            ],
+            "denyAllInboundRule": [
+              {
+                "name": "DenyAllInbound",
+                "properties": {
+                  "description": "Explicit deny-all rule for inbound traffic",
+                  "protocol": "*",
+                  "sourcePortRange": "*",
+                  "destinationPortRange": "*",
+                  "sourceAddressPrefix": "*",
+                  "destinationAddressPrefix": "*",
+                  "access": "Deny",
+                  "priority": 4096,
+                  "direction": "Inbound"
+                }
+              }
+            ]
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/virtualNetworks",
+              "apiVersion": "2023-11-01",
+              "name": "[parameters('vnetName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "addressSpace": {
+                  "addressPrefixes": [
+                    "[parameters('addressSpace')]"
+                  ]
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2023-11-01",
+              "name": "[parameters('nsgWebName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "securityRules": "[concat(variables('httpHttpsRules'), if(parameters('deployBastion'), variables('sshFromBastionRule'), variables('sshFromHomeRule')), variables('denyAllInboundRule'))]"
+              }
+            },
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2023-11-01",
+              "name": "[parameters('nsgDataName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "securityRules": [
+                  {
+                    "name": "DenyInternetInbound",
+                    "properties": {
+                      "description": "Deny inbound from Internet to data subnet",
+                      "protocol": "*",
+                      "sourcePortRange": "*",
+                      "destinationPortRange": "*",
+                      "sourceAddressPrefix": "Internet",
+                      "destinationAddressPrefix": "*",
+                      "access": "Deny",
+                      "priority": 4096,
+                      "direction": "Inbound"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Network/virtualNetworks/subnets",
+              "apiVersion": "2023-11-01",
+              "name": "[format('{0}/{1}', parameters('vnetName'), parameters('webSubnetName'))]",
+              "properties": {
+                "addressPrefix": "[parameters('webSubnetCidr')]",
+                "serviceEndpoints": [
+                  {
+                    "service": "Microsoft.Storage"
+                  }
+                ],
+                "networkSecurityGroup": {
+                  "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsgWebName'))]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsgWebName'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/virtualNetworks/subnets",
+              "apiVersion": "2023-11-01",
+              "name": "[format('{0}/{1}', parameters('vnetName'), parameters('dataSubnetName'))]",
+              "properties": {
+                "addressPrefix": "[parameters('dataSubnetCidr')]",
+                "serviceEndpoints": [
+                  {
+                    "service": "Microsoft.Storage"
+                  }
+                ],
+                "networkSecurityGroup": {
+                  "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsgDataName'))]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsgDataName'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+              ]
+            },
+            {
+              "condition": "[parameters('deployBastion')]",
+              "type": "Microsoft.Network/bastionHosts",
+              "apiVersion": "2024-07-01",
+              "name": "[parameters('bastionName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "Developer"
+              },
+              "properties": {
+                "virtualNetwork": {
+                  "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "vnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Virtual network resource ID"
+              },
+              "value": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+            },
+            "webSubnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Web (public) subnet resource ID"
+              },
+              "value": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('webSubnetName'))]"
+            },
+            "dataSubnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Data (private) subnet resource ID"
+              },
+              "value": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('dataSubnetName'))]"
+            },
+            "nsgWebId": {
+              "type": "string",
+              "metadata": {
+                "description": "Web NSG resource ID"
+              },
+              "value": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsgWebName'))]"
+            },
+            "nsgDataId": {
+              "type": "string",
+              "metadata": {
+                "description": "Data NSG resource ID"
+              },
+              "value": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsgDataName'))]"
+            },
+            "bastionName": {
+              "type": "string",
+              "metadata": {
+                "description": "Bastion name (empty when not deployed)"
+              },
+              "value": "[if(parameters('deployBastion'), parameters('bastionName'), '')]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "storage-novatrix",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "storageAccountName": {
+            "value": "[variables('storageAccountName')]"
+          },
+          "containerNames": {
+            "value": [
+              "tickets",
+              "files"
+            ]
+          },
+          "webSubnetId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'network-novatrix'), '2025-04-01').outputs.webSubnetId.value]"
+          },
+          "dataSubnetId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'network-novatrix'), '2025-04-01').outputs.dataSubnetId.value]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.46.1.21595",
+              "templateHash": "3337496929407034929"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "StorageV2 with private containers (tickets, files), no public blob access, HTTPS only, TLS 1.2."
+              }
+            },
+            "storageAccountName": {
+              "type": "string"
+            },
+            "containerNames": {
+              "type": "array",
+              "defaultValue": [
+                "tickets",
+                "files"
+              ]
+            },
+            "webSubnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Web subnet (VM) allowed via Microsoft.Storage service endpoint."
+              }
+            },
+            "dataSubnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Data subnet allowed via Microsoft.Storage service endpoint."
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2023-05-01",
+              "name": "[parameters('storageAccountName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "kind": "StorageV2",
+              "properties": {
+                "accessTier": "Hot",
+                "allowBlobPublicAccess": false,
+                "allowSharedKeyAccess": true,
+                "supportsHttpsTrafficOnly": true,
+                "minimumTlsVersion": "TLS1_2",
+                "publicNetworkAccess": "Enabled",
+                "networkAcls": {
+                  "defaultAction": "Deny",
+                  "bypass": "AzureServices",
+                  "virtualNetworkRules": [
+                    {
+                      "id": "[parameters('webSubnetId')]",
+                      "action": "Allow"
+                    },
+                    {
+                      "id": "[parameters('dataSubnetId')]",
+                      "action": "Allow"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            },
+            {
+              "copy": {
+                "name": "container",
+                "count": "[length(parameters('containerNames'))]"
+              },
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', parameters('containerNames')[copyIndex()])]",
+              "properties": {
+                "publicAccess": "None"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
+              ]
+            }
+          ],
+          "outputs": {
+            "storageAccountId": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage account resource ID"
+              },
+              "value": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+            },
+            "storageAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage account name"
+              },
+              "value": "[parameters('storageAccountName')]"
+            },
+            "blobEndpoint": {
+              "type": "string",
+              "metadata": {
+                "description": "Blob service primary endpoint"
+              },
+              "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-05-01').primaryEndpoints.blob]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'network-novatrix')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "compute-novatrix",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "vmName": {
+            "value": "vm-novatrix-web"
+          },
+          "vmSize": {
+            "value": "Standard_B1s"
+          },
+          "adminUsername": {
+            "value": "[parameters('adminUsername')]"
+          },
+          "adminSshPublicKey": {
+            "value": "[parameters('adminSshPublicKey')]"
+          },
+          "subnetId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'network-novatrix'), '2025-04-01').outputs.webSubnetId.value]"
+          },
+          "userAssignedIdentityId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'identity-novatrix'), '2025-04-01').outputs.miId.value]"
+          },
+          "storageAccountName": {
+            "value": "[variables('storageAccountName')]"
+          },
+          "miClientId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'identity-novatrix'), '2025-04-01').outputs.miClientId.value]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.46.1.21595",
+              "templateHash": "5931286535209854332"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Web VM: public IP + NIC + Ubuntu VM with system- and user-assigned managed identity, cloud-init bootstrap."
+              }
+            },
+            "vmName": {
+              "type": "string",
+              "defaultValue": "vm-novatrix-web"
+            },
+            "vmSize": {
+              "type": "string",
+              "defaultValue": "Standard_B1s"
+            },
+            "adminUsername": {
+              "type": "string",
+              "defaultValue": "azureuser"
+            },
+            "adminSshPublicKey": {
+              "type": "string"
+            },
+            "subnetId": {
+              "type": "string"
+            },
+            "userAssignedIdentityId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Optional user-assigned managed identity id (id-novatrix-web from identity.bicep)."
+              }
+            },
+            "storageAccountName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Storage account name injected into cloud-init (NOVATRIX_STORAGE_ACCOUNT)."
+              }
+            },
+            "miClientId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "User-assigned MI client id injected into cloud-init (AZURE_CLIENT_ID)."
+              }
+            },
+            "pipName": {
+              "type": "string",
+              "defaultValue": "pip-novatrix-web"
+            },
+            "nicName": {
+              "type": "string",
+              "defaultValue": "nic-novatrix-web"
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            }
+          },
+          "variables": {
+            "cloudInitRaw": "#cloud-config\n# Novatrix AB support ticket VM — cloud-init user data.\n# Applied by the v34 VM (infra/compute.bicep -> customData / userData).\n# Installs nginx + python3, writes the ticket form and app, runs the app on\n# 127.0.0.1:8080 via systemd, and reverse-proxies port 80 -> 8080.\n#\n# Source of truth for the embedded files: web/index.html and web/ticket_app.py.\n# Keep them in sync when editing this file.\n\npackage_update: true\npackages:\n  - nginx\n  - python3\n  - python3-pip\n\nwrite_files:\n  - path: /var/www/novatrix/index.html\n    content: |\n      <!DOCTYPE html>\n      <html lang=\"sv\">\n      <head>\n        <meta charset=\"utf-8\">\n        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n        <title>Novatrix AB — Supportärende</title>\n        <style>\n          body { font-family: system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; background: #fafafa; }\n          h1 { font-size: 1.5rem; }\n          form { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 1.5rem; }\n          label { display: block; margin: 0.75rem 0 0.25rem; font-weight: 600; }\n          input, select, textarea { width: 100%; box-sizing: border-box; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font: inherit; }\n          textarea { min-height: 120px; }\n          button { margin-top: 1rem; padding: 0.6rem 1.2rem; background: #0b5cad; color: #fff; border: 0; border-radius: 4px; font: inherit; cursor: pointer; }\n          button:hover { background: #094a8f; }\n          .note { color: #555; font-size: 0.85rem; }\n          #status { margin-top: 1rem; font-weight: 600; }\n        </style>\n      </head>\n      <body>\n        <h1>Novatrix AB — Supportärende</h1>\n        <p class=\"note\">Fyll i formuläret så skapas ett ärende. Ärendet sparas på servern och skickas vidare till supporten.</p>\n\n        <form id=\"ticket-form\" method=\"post\" action=\"/ticket\">\n          <label for=\"name\">Namn</label>\n          <input type=\"text\" id=\"name\" name=\"name\" required autocomplete=\"name\">\n\n          <label for=\"email\">E-post</label>\n          <input type=\"email\" id=\"email\" name=\"email\" required autocomplete=\"email\">\n\n          <label for=\"category\">Kategori</label>\n          <select id=\"category\" name=\"category\" required>\n            <option value=\"\">Välj kategori…</option>\n            <option value=\"hardware\">Hårdvara</option>\n            <option value=\"software\">Mjukvara</option>\n            <option value=\"network\">Nätverk</option>\n            <option value=\"account\">Konto &amp; behörighet</option>\n            <option value=\"other\">Övrigt</option>\n          </select>\n\n          <label for=\"description\">Beskrivning</label>\n          <textarea id=\"description\" name=\"description\" required placeholder=\"Beskriv problemet…\"></textarea>\n\n          <label for=\"file_note\">Fil (valfritt)</label>\n          <input type=\"text\" id=\"file_note\" name=\"file_note\" placeholder=\"Namn på bifogad fil, t.ex. skärmdump.png\">\n\n          <button type=\"submit\">Skicka ärende</button>\n        </form>\n\n        <p id=\"status\" role=\"status\"></p>\n\n        <script>\n          const form = document.getElementById(\"ticket-form\");\n          form.addEventListener(\"submit\", async (event) => {\n            event.preventDefault();\n            const status = document.getElementById(\"status\");\n            try {\n              const response = await fetch(\"/ticket\", {\n                method: \"POST\",\n                headers: { \"Content-Type\": \"application/x-www-form-urlencoded\" },\n                body: new URLSearchParams(new FormData(form)).toString(),\n              });\n              const data = await response.json();\n              status.textContent = response.ok\n                ? \"Tack! Ärendet är mottaget.\"\n                : \"Något gick fel: \" + (data.error || \"försök igen\");\n            } catch (err) {\n              status.textContent = \"Nätverksfel — försök igen.\";\n            }\n          });\n        </script>\n      </body>\n      </html>\n\n  - path: /opt/novatrix/ticket_app.py\n    content: |\n      #!/usr/bin/env python3\n      \"\"\"Novatrix AB support ticket app — guest VM code (NOT repo automation).\n\n      This file runs ON the Azure VM (installed by web/cloud-init.yaml), not in the\n      repo toolchain. The vault \"no Python scripts\" rule applies to repository\n      automation; this is the course application itself.\n\n      Behaviour:\n        GET  /        -> serves the ticket form (web/index.html)\n        POST /ticket  -> validates the submission and writes a JSON ticket to\n                         /var/lib/novatrix/tickets/<id>.json\n\n      If the optional azure-identity and azure-storage-blob packages are installed\n      and the VM's managed identity works, the ticket is ALSO uploaded to the\n      `tickets` blob container. Blob upload is best-effort: the app fails closed to\n      local disk, so a ticket is never lost because Azure is unreachable.\n\n      Runs on 127.0.0.1:8080 behind the nginx reverse proxy (port 80).\n      \"\"\"\n\n      import json\n      import os\n      import time\n      import uuid\n      from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer\n      from urllib.parse import parse_qs, urlparse\n\n      TICKET_DIR = os.environ.get(\"NOVATRIX_TICKET_DIR\", \"/var/lib/novatrix/tickets\")\n      FORM_PATH = os.environ.get(\"NOVATRIX_FORM_PATH\", \"/var/www/novatrix/index.html\")\n      STORAGE_ACCOUNT = os.environ.get(\"NOVATRIX_STORAGE_ACCOUNT\", \"\")\n      BLOB_CONTAINER = os.environ.get(\"NOVATRIX_BLOB_CONTAINER\", \"tickets\")\n      HOST = os.environ.get(\"NOVATRIX_LISTEN_HOST\", \"127.0.0.1\")\n      PORT = int(os.environ.get(\"NOVATRIX_LISTEN_PORT\", \"8080\"))\n\n      FALLBACK_FORM = \"\"\"<!DOCTYPE html>\n      <html lang=\"sv\"><head><meta charset=\"utf-8\"><title>Novatrix AB — Supportärende</title></head>\n      <body><h1>Novatrix AB — Supportärende</h1>\n      <form method=\"post\" action=\"/ticket\">\n        <label>Namn <input type=\"text\" name=\"name\" required></label><br>\n        <label>E-post <input type=\"email\" name=\"email\" required></label><br>\n        <label>Kategori <input type=\"text\" name=\"category\" required></label><br>\n        <label>Beskrivning <textarea name=\"description\" required></textarea></label><br>\n        <label>Fil (valfritt) <input type=\"text\" name=\"file_note\"></label><br>\n        <button type=\"submit\">Skicka ärende</button>\n      </form></body></html>\n      \"\"\"\n\n\n      def upload_to_blob(ticket):\n          \"\"\"Best-effort upload. Raises on any failure; caller keeps the local copy.\"\"\"\n          if not STORAGE_ACCOUNT:\n              raise RuntimeError(\"NOVATRIX_STORAGE_ACCOUNT is empty\")\n          from azure.identity import DefaultAzureCredential, ManagedIdentityCredential\n          from azure.storage.blob import BlobServiceClient\n\n          client_id = os.environ.get(\"AZURE_CLIENT_ID\", \"\").strip()\n          credential = (\n              ManagedIdentityCredential(client_id=client_id)\n              if client_id\n              else DefaultAzureCredential()\n          )\n          account_url = f\"https://{STORAGE_ACCOUNT}.blob.core.windows.net\"\n          client = BlobServiceClient(account_url, credential=credential)\n          blob_name = f\"{ticket['id']}.json\"\n          client.get_container_client(BLOB_CONTAINER).upload_blob(\n              blob_name, json.dumps(ticket, ensure_ascii=False), overwrite=False\n          )\n\n\n      class TicketHandler(BaseHTTPRequestHandler):\n          server_version = \"NovatrixTicket/1.0\"\n\n          def do_GET(self):\n              if urlparse(self.path).path in (\"/\", \"/index.html\"):\n                  self._send_form()\n              else:\n                  self.send_error(404)\n\n          def do_POST(self):\n              if urlparse(self.path).path != \"/ticket\":\n                  self.send_error(404)\n                  return\n              try:\n                  length = int(self.headers.get(\"Content-Length\", 0) or 0)\n                  body = self.rfile.read(length).decode(\"utf-8\", \"replace\")\n                  ticket = self._parse_ticket(body)\n                  self._save_ticket(ticket)\n                  self._json(201, {\"ok\": True, \"id\": ticket[\"id\"]})\n              except ValueError as exc:\n                  self.log_error(\"ticket rejected: %s\", exc)\n                  self._json(400, {\"ok\": False, \"error\": str(exc)})\n              except Exception as exc:  # noqa: BLE001 — guest app must keep serving\n                  self.log_error(\"ticket failed: %s\", exc)\n                  self._json(500, {\"ok\": False, \"error\": \"internal error\"})\n\n          def _parse_ticket(self, body):\n              if not body:\n                  raise ValueError(\"empty body\")\n              try:\n                  data = json.loads(body)\n              except json.JSONDecodeError:\n                  data = {k: v[0] for k, v in parse_qs(body).items()}\n              required = (\"name\", \"email\", \"category\", \"description\")\n              missing = [k for k in required if not str(data.get(k, \"\")).strip()]\n              if missing:\n                  raise ValueError(\"missing fields: \" + \", \".join(missing))\n              return {\n                  \"id\": uuid.uuid4().hex,\n                  \"received_at\": time.strftime(\"%Y-%m-%dT%H:%M:%SZ\", time.gmtime()),\n                  \"name\": str(data.get(\"name\", \"\")).strip(),\n                  \"email\": str(data.get(\"email\", \"\")).strip(),\n                  \"category\": str(data.get(\"category\", \"\")).strip(),\n                  \"description\": str(data.get(\"description\", \"\")).strip(),\n                  \"file_note\": str(data.get(\"file_note\", \"\")).strip(),\n              }\n\n          def _save_ticket(self, ticket):\n              os.makedirs(TICKET_DIR, exist_ok=True)\n              path = os.path.join(TICKET_DIR, f\"{ticket['id']}.json\")\n              with open(path, \"w\", encoding=\"utf-8\") as fh:\n                  json.dump(ticket, fh, ensure_ascii=False, indent=2)\n              try:\n                  upload_to_blob(ticket)\n              except Exception as exc:  # noqa: BLE001 — fail closed to local disk\n                  self.log_error(\"blob upload skipped/failed (local copy kept): %s\", exc)\n\n          def _send_form(self):\n              try:\n                  with open(FORM_PATH, encoding=\"utf-8\") as fh:\n                      html = fh.read()\n              except OSError:\n                  html = FALLBACK_FORM\n              payload = html.encode(\"utf-8\")\n              self.send_response(200)\n              self.send_header(\"Content-Type\", \"text/html; charset=utf-8\")\n              self.send_header(\"Content-Length\", str(len(payload)))\n              self.end_headers()\n              self.wfile.write(payload)\n\n          def _json(self, code, payload):\n              data = json.dumps(payload, ensure_ascii=False).encode(\"utf-8\")\n              self.send_response(code)\n              self.send_header(\"Content-Type\", \"application/json; charset=utf-8\")\n              self.send_header(\"Content-Length\", str(len(data)))\n              self.end_headers()\n              self.wfile.write(data)\n\n\n      def main():\n          os.makedirs(TICKET_DIR, exist_ok=True)\n          server = ThreadingHTTPServer((HOST, PORT), TicketHandler)\n          print(f\"Novatrix ticket app listening on http://{HOST}:{PORT}\", flush=True)\n          server.serve_forever()\n\n\n      if __name__ == \"__main__\":\n          main()\n\n  - path: /etc/systemd/system/novatrix-ticket.service\n    content: |\n      [Unit]\n      Description=Novatrix AB support ticket app\n      After=network-online.target\n      Wants=network-online.target\n\n      [Service]\n      Type=simple\n      User=www-data\n      Group=www-data\n      WorkingDirectory=/opt/novatrix\n      # Set to the deployed storage account name to enable blob upload.\n      # Empty (default) = local-only mode; the app fails closed to disk.\n      Environment=NOVATRIX_STORAGE_ACCOUNT=__NOVATRIX_STORAGE_ACCOUNT__\n      Environment=NOVATRIX_BLOB_CONTAINER=tickets\n      Environment=AZURE_CLIENT_ID=__NOVATRIX_MI_CLIENT_ID__\n      ExecStart=/usr/bin/python3 /opt/novatrix/ticket_app.py\n      Restart=on-failure\n      RestartSec=5\n\n      [Install]\n      WantedBy=multi-user.target\n\n  - path: /etc/nginx/sites-available/novatrix\n    content: |\n      server {\n          listen 80 default_server;\n          listen [::]:80 default_server;\n          server_name _;\n          client_max_body_size 2m;\n\n          location / {\n              proxy_pass http://127.0.0.1:8080;\n              proxy_set_header Host $host;\n              proxy_set_header X-Real-IP $remote_addr;\n              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n          }\n      }\n\nruncmd:\n  - mkdir -p /var/lib/novatrix/tickets /var/www/novatrix /opt/novatrix\n  - python3 -m pip install --break-system-packages azure-identity azure-storage-blob\n  - chown -R www-data:www-data /var/lib/novatrix /var/www/novatrix /opt/novatrix\n  - chmod 755 /opt/novatrix/ticket_app.py\n  - rm -f /etc/nginx/sites-enabled/default\n  - ln -sf /etc/nginx/sites-available/novatrix /etc/nginx/sites-enabled/novatrix\n  - systemctl daemon-reload\n  - systemctl enable --now novatrix-ticket\n  - systemctl enable nginx\n  - systemctl restart nginx",
+            "cloudInitTemplated": "[replace(replace(variables('cloudInitRaw'), '__NOVATRIX_STORAGE_ACCOUNT__', parameters('storageAccountName')), '__NOVATRIX_MI_CLIENT_ID__', parameters('miClientId'))]",
+            "cloudInit": "[base64(variables('cloudInitTemplated'))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/publicIPAddresses",
+              "apiVersion": "2023-11-01",
+              "name": "[parameters('pipName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "Standard"
+              },
+              "properties": {
+                "publicIPAllocationMethod": "Static"
+              }
+            },
+            {
+              "type": "Microsoft.Network/networkInterfaces",
+              "apiVersion": "2023-11-01",
+              "name": "[parameters('nicName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "ipConfigurations": [
+                  {
+                    "name": "ipconfig1",
+                    "properties": {
+                      "subnet": {
+                        "id": "[parameters('subnetId')]"
+                      },
+                      "privateIPAllocationMethod": "Dynamic",
+                      "publicIPAddress": {
+                        "id": "[resourceId('Microsoft.Network/publicIPAddresses', parameters('pipName'))]"
+                      }
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses', parameters('pipName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Compute/virtualMachines",
+              "apiVersion": "2023-09-01",
+              "name": "[parameters('vmName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "identity": "[if(empty(parameters('userAssignedIdentityId')), createObject('type', 'SystemAssigned'), createObject('type', 'SystemAssigned, UserAssigned', 'userAssignedIdentities', createObject(format('{0}', parameters('userAssignedIdentityId')), createObject())))]",
+              "properties": {
+                "hardwareProfile": {
+                  "vmSize": "[parameters('vmSize')]"
+                },
+                "osProfile": {
+                  "computerName": "[parameters('vmName')]",
+                  "adminUsername": "[parameters('adminUsername')]",
+                  "linuxConfiguration": {
+                    "disablePasswordAuthentication": true,
+                    "ssh": {
+                      "publicKeys": [
+                        {
+                          "path": "[format('/home/{0}/.ssh/authorized_keys', parameters('adminUsername'))]",
+                          "keyData": "[parameters('adminSshPublicKey')]"
+                        }
+                      ]
+                    }
+                  },
+                  "customData": "[variables('cloudInit')]"
+                },
+                "storageProfile": {
+                  "imageReference": {
+                    "publisher": "Canonical",
+                    "offer": "0001-com-ubuntu-server-jammy",
+                    "sku": "22_04-lts-gen2",
+                    "version": "latest"
+                  },
+                  "osDisk": {
+                    "name": "[format('{0}-osdisk', parameters('vmName'))]",
+                    "caching": "ReadWrite",
+                    "createOption": "FromImage",
+                    "managedDisk": {
+                      "storageAccountType": "Standard_LRS"
+                    }
+                  }
+                },
+                "networkProfile": {
+                  "networkInterfaces": [
+                    {
+                      "id": "[resourceId('Microsoft.Network/networkInterfaces', parameters('nicName'))]"
+                    }
+                  ]
+                },
+                "diagnosticsProfile": {
+                  "bootDiagnostics": {
+                    "enabled": true
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/networkInterfaces', parameters('nicName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "vmId": {
+              "type": "string",
+              "metadata": {
+                "description": "VM resource ID"
+              },
+              "value": "[resourceId('Microsoft.Compute/virtualMachines', parameters('vmName'))]"
+            },
+            "vmName": {
+              "type": "string",
+              "metadata": {
+                "description": "VM name"
+              },
+              "value": "[parameters('vmName')]"
+            },
+            "privateIPAddress": {
+              "type": "string",
+              "metadata": {
+                "description": "VM private IP address"
+              },
+              "value": "[reference(resourceId('Microsoft.Network/networkInterfaces', parameters('nicName')), '2023-11-01').ipConfigurations[0].properties.privateIPAddress]"
+            },
+            "publicIPAddress": {
+              "type": "string",
+              "metadata": {
+                "description": "VM public IP address"
+              },
+              "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses', parameters('pipName')), '2023-11-01').ipAddress]"
+            },
+            "publicIpId": {
+              "type": "string",
+              "metadata": {
+                "description": "Public IP resource ID"
+              },
+              "value": "[resourceId('Microsoft.Network/publicIPAddresses', parameters('pipName'))]"
+            },
+            "nicId": {
+              "type": "string",
+              "metadata": {
+                "description": "Network interface resource ID"
+              },
+              "value": "[resourceId('Microsoft.Network/networkInterfaces', parameters('nicName'))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'identity-novatrix')]",
+        "[resourceId('Microsoft.Resources/deployments', 'network-novatrix')]"
+      ]
+    }
+  ],
+  "outputs": {
+    "vm": {
+      "type": "object",
+      "metadata": {
+        "description": "Web VM connection details"
+      },
+      "value": {
+        "id": "[reference(resourceId('Microsoft.Resources/deployments', 'compute-novatrix'), '2025-04-01').outputs.vmId.value]",
+        "name": "[reference(resourceId('Microsoft.Resources/deployments', 'compute-novatrix'), '2025-04-01').outputs.vmName.value]",
+        "privateIp": "[reference(resourceId('Microsoft.Resources/deployments', 'compute-novatrix'), '2025-04-01').outputs.privateIPAddress.value]",
+        "publicIp": "[reference(resourceId('Microsoft.Resources/deployments', 'compute-novatrix'), '2025-04-01').outputs.publicIPAddress.value]"
+      }
+    },
+    "storage": {
+      "type": "object",
+      "metadata": {
+        "description": "Storage account details"
+      },
+      "value": {
+        "accountId": "[reference(resourceId('Microsoft.Resources/deployments', 'storage-novatrix'), '2025-04-01').outputs.storageAccountId.value]",
+        "accountName": "[reference(resourceId('Microsoft.Resources/deployments', 'storage-novatrix'), '2025-04-01').outputs.storageAccountName.value]",
+        "blobEndpoint": "[reference(resourceId('Microsoft.Resources/deployments', 'storage-novatrix'), '2025-04-01').outputs.blobEndpoint.value]"
+      }
+    },
+    "identity": {
+      "type": "object",
+      "metadata": {
+        "description": "Managed identity details"
+      },
+      "value": {
+        "miId": "[reference(resourceId('Microsoft.Resources/deployments', 'identity-novatrix'), '2025-04-01').outputs.miId.value]",
+        "miName": "[reference(resourceId('Microsoft.Resources/deployments', 'identity-novatrix'), '2025-04-01').outputs.miName.value]"
+      }
+    }
+  }
+}

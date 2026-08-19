@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "swedencentral"
+    },
+    "studentPrefix": {
+      "value": "danlin"
+    },
+    "adminUsername": {
+      "value": "azureuser"
+    },
+    "adminSshPublicKey": {
+      "value": "REPLACE_WITH_SSH_RSA_PUBLIC_KEY"
+    },
+    "deployBastion": {
+      "value": false
+    },
+    "allowedSshCidr": {
+      "value": "203.0.113.0/32"
+    }
+  }
+}

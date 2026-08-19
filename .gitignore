@@ -1,0 +1,12 @@
+.env
+envs/novatrix.parameters.local.json
+build/*
+!build/.gitkeep
+!build/main.json
+out/
+*.pem
+id_rsa*
+.DS_Store
+node_modules/
+web/__pycache__/
+*.pyc

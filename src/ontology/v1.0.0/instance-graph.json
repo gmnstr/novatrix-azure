@@ -1,0 +1,501 @@
+{
+  "ontology_version": "1.0.0",
+  "surface": "azure-tool-surface",
+  "state_kind": "projected",
+  "generated_by": "hand_authored_projection",
+  "nodes": [
+    {
+      "v3_type": "ResourceGroup",
+      "v3_id": null,
+      "external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-10T08:00:00Z" },
+      "provenance": { "tool": "azure_bootstrap", "server": "azure-tool" },
+      "relations": [],
+      "properties": { "location": "swedencentral" }
+    },
+    {
+      "v3_type": "VirtualNetwork",
+      "v3_id": null,
+      "external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.Network/virtualNetworks/vnet-novatrix-core",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-12T09:00:00Z" },
+      "provenance": { "tool": "azure_vnet_apply", "server": "azure-tool" },
+      "relations": [
+        {
+          "type": "hostedIn",
+          "target_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix",
+          "target_v3_type": "ResourceGroup"
+        }
+      ],
+      "properties": { "address_space": ["10.0.0.0/16"], "week": 36 }
+    },
+    {
+      "v3_type": "Subnet",
+      "v3_id": null,
+      "external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.Network/virtualNetworks/vnet-novatrix-core/subnets/snet-novatrix-web",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-12T09:05:00Z" },
+      "provenance": { "tool": "azure_vnet_apply", "server": "azure-tool" },
+      "relations": [
+        {
+          "type": "hostedIn",
+          "target_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix",
+          "target_v3_type": "ResourceGroup"
+        },
+        {
+          "type": "containedIn",
+          "target_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.Network/virtualNetworks/vnet-novatrix-core",
+          "target_v3_type": "VirtualNetwork"
+        },
+        {
+          "type": "allowedBy",
+          "target_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.Network/networkSecurityGroups/nsg-novatrix-web",
+          "target_v3_type": "NetworkSecurityGroup"
+        }
+      ],
+      "properties": { "address_prefix": "10.0.1.0/24", "access": "public", "week": 36 }
+    },
+    {
+      "v3_type": "Subnet",
+      "v3_id": null,
+      "external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.Network/virtualNetworks/vnet-novatrix-core/subnets/snet-novatrix-data",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-12T09:10:00Z" },
+      "provenance": { "tool": "azure_vnet_apply", "server": "azure-tool" },
+      "relations": [
+        {
+          "type": "hostedIn",
+          "target_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix",
+          "target_v3_type": "ResourceGroup"
+        },
+        {
+          "type": "containedIn",
+          "target_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.Network/virtualNetworks/vnet-novatrix-core",
+          "target_v3_type": "VirtualNetwork"
+        },
+        {
+          "type": "allowedBy",
+          "target_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.Network/networkSecurityGroups/nsg-novatrix-data",
+          "target_v3_type": "NetworkSecurityGroup"
+        }
+      ],
+      "properties": { "address_prefix": "10.0.2.0/24", "access": "private", "week": 36 }
+    },
+    {
+      "v3_type": "NetworkSecurityGroup",
+      "v3_id": null,
+      "external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.Network/networkSecurityGroups/nsg-novatrix-web",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-12T09:20:00Z" },
+      "provenance": { "tool": "azure_nsg_apply", "server": "azure-tool" },
+      "relations": [
+        {
+          "type": "hostedIn",
+          "target_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix",
+          "target_v3_type": "ResourceGroup"
+        }
+      ],
+      "properties": { "week": 36 }
+    },
+    {
+      "v3_type": "NetworkSecurityGroup",
+      "v3_id": null,
+      "external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.Network/networkSecurityGroups/nsg-novatrix-data",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-12T09:25:00Z" },
+      "provenance": { "tool": "azure_nsg_apply", "server": "azure-tool" },
+      "relations": [
+        {
+          "type": "hostedIn",
+          "target_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix",
+          "target_v3_type": "ResourceGroup"
+        }
+      ],
+      "properties": { "week": 36 }
+    },
+    {
+      "v3_type": "PublicIP",
+      "v3_id": null,
+      "external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.Network/publicIPAddresses/pip-novatrix-web",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-11T10:00:00Z" },
+      "provenance": { "tool": "azure_deploy", "server": "azure-tool" },
+      "relations": [
+        {
+          "type": "hostedIn",
+          "target_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix",
+          "target_v3_type": "ResourceGroup"
+        },
+        {
+          "type": "attachedTo",
+          "target_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.Compute/virtualMachines/vm-novatrix-web",
+          "target_v3_type": "VirtualMachine"
+        },
+        {
+          "type": "tornDownBy",
+          "target_external_id": "rg-novatrix/daily-teardown-2026-08-19",
+          "target_v3_type": "TeardownPlan"
+        }
+      ],
+      "properties": {
+        "allocation": "Static",
+        "subnet_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.Network/virtualNetworks/vnet-novatrix-core/subnets/snet-novatrix-web",
+        "week": 34
+      }
+    },
+    {
+      "v3_type": "NetworkInterface",
+      "v3_id": null,
+      "external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.Network/networkInterfaces/nic-novatrix-web",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-11T10:05:00Z" },
+      "provenance": { "tool": "azure_deploy", "server": "azure-tool" },
+      "relations": [
+        {
+          "type": "hostedIn",
+          "target_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix",
+          "target_v3_type": "ResourceGroup"
+        },
+        {
+          "type": "attachedTo",
+          "target_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.Compute/virtualMachines/vm-novatrix-web",
+          "target_v3_type": "VirtualMachine"
+        },
+        {
+          "type": "tornDownBy",
+          "target_external_id": "rg-novatrix/daily-teardown-2026-08-19",
+          "target_v3_type": "TeardownPlan"
+        }
+      ],
+      "properties": { "week": 34 }
+    },
+    {
+      "v3_type": "VirtualMachine",
+      "v3_id": null,
+      "external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.Compute/virtualMachines/vm-novatrix-web",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-11T10:10:00Z" },
+      "provenance": { "tool": "azure_deploy", "server": "azure-tool" },
+      "relations": [
+        {
+          "type": "hostedIn",
+          "target_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix",
+          "target_v3_type": "ResourceGroup"
+        },
+        {
+          "type": "writesTo",
+          "target_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.Storage/storageAccounts/stnovatrixdanlin01/blobServices/default/containers/tickets",
+          "target_v3_type": "BlobContainer"
+        },
+        {
+          "type": "writesTo",
+          "target_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.Storage/storageAccounts/stnovatrixdanlin01/blobServices/default/containers/files",
+          "target_v3_type": "BlobContainer"
+        },
+        {
+          "type": "tornDownBy",
+          "target_external_id": "rg-novatrix/daily-teardown-2026-08-19",
+          "target_v3_type": "TeardownPlan"
+        }
+      ],
+      "properties": { "size": "Standard_B2ats_v2", "os": "ubuntu-22.04", "week": 34 }
+    },
+    {
+      "v3_type": "CloudInitConfig",
+      "v3_id": null,
+      "external_id": "rg-novatrix/cloud-init-vm-novatrix-web",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-11T10:12:00Z" },
+      "provenance": { "tool": "azure_deploy", "server": "azure-tool" },
+      "relations": [],
+      "properties": { "week": 34 }
+    },
+    {
+      "v3_type": "ManagedIdentity",
+      "v3_id": null,
+      "external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-novatrix-web",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-13T11:00:00Z" },
+      "provenance": { "tool": "azure_mi_create", "server": "azure-tool" },
+      "relations": [
+        {
+          "type": "hostedIn",
+          "target_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix",
+          "target_v3_type": "ResourceGroup"
+        },
+        {
+          "type": "identityOf",
+          "target_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.Compute/virtualMachines/vm-novatrix-web",
+          "target_v3_type": "VirtualMachine"
+        }
+      ],
+      "properties": { "week": 35 }
+    },
+    {
+      "v3_type": "RoleAssignment",
+      "v3_id": null,
+      "external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.Authorization/roleAssignments/ra-novatrix-web-storage",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-13T11:30:00Z" },
+      "provenance": { "tool": "azure_rbac_assign", "server": "azure-tool" },
+      "relations": [
+        {
+          "type": "hostedIn",
+          "target_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix",
+          "target_v3_type": "ResourceGroup"
+        },
+        {
+          "type": "grantedTo",
+          "target_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-novatrix-web",
+          "target_v3_type": "ManagedIdentity"
+        }
+      ],
+      "properties": {
+        "role": "Storage Blob Data Contributor",
+        "scope": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.Storage/storageAccounts/stnovatrixdanlin01",
+        "week": 35
+      }
+    },
+    {
+      "v3_type": "StorageAccount",
+      "v3_id": null,
+      "external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.Storage/storageAccounts/stnovatrixdanlin01",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-14T12:00:00Z" },
+      "provenance": { "tool": "azure_storage_account_create", "server": "azure-tool" },
+      "relations": [
+        {
+          "type": "hostedIn",
+          "target_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix",
+          "target_v3_type": "ResourceGroup"
+        },
+        {
+          "type": "tornDownBy",
+          "target_external_id": "rg-novatrix/daily-teardown-2026-08-19",
+          "target_v3_type": "TeardownPlan"
+        }
+      ],
+      "properties": {
+        "kind": "StorageV2",
+        "sku": "Standard_LRS",
+        "allow_blob_public_access": false,
+        "network_default_action": "Deny",
+        "week": 37
+      }
+    },
+    {
+      "v3_type": "BlobContainer",
+      "v3_id": null,
+      "external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.Storage/storageAccounts/stnovatrixdanlin01/blobServices/default/containers/tickets",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-14T12:30:00Z" },
+      "provenance": { "tool": "azure_container_create", "server": "azure-tool" },
+      "relations": [
+        {
+          "type": "hostedIn",
+          "target_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix",
+          "target_v3_type": "ResourceGroup"
+        }
+      ],
+      "properties": { "access": "private", "lock_access": true, "week": 37 }
+    },
+    {
+      "v3_type": "BlobContainer",
+      "v3_id": null,
+      "external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.Storage/storageAccounts/stnovatrixdanlin01/blobServices/default/containers/files",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-14T12:35:00Z" },
+      "provenance": { "tool": "azure_container_create", "server": "azure-tool" },
+      "relations": [
+        {
+          "type": "hostedIn",
+          "target_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix",
+          "target_v3_type": "ResourceGroup"
+        }
+      ],
+      "properties": { "access": "private", "lock_access": true, "week": 37 }
+    },
+    {
+      "v3_type": "ArmTemplate",
+      "v3_id": null,
+      "external_id": "infra/main.bicep",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-15T13:00:00Z" },
+      "provenance": { "tool": "azure_bicep_build", "server": "azure-tool" },
+      "relations": [],
+      "properties": { "artifact": "source" }
+    },
+    {
+      "v3_type": "ArmTemplate",
+      "v3_id": null,
+      "external_id": "build/main.json",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-15T13:05:00Z" },
+      "provenance": { "tool": "azure_bicep_build", "server": "azure-tool" },
+      "relations": [
+        {
+          "type": "compiledFrom",
+          "target_external_id": "infra/main.bicep",
+          "target_v3_type": "ArmTemplate"
+        },
+        {
+          "type": "parameterizedBy",
+          "target_external_id": "envs/novatrix.parameters.json",
+          "target_v3_type": "ParameterFile"
+        }
+      ],
+      "properties": { "artifact": "compiled", "week": 38 }
+    },
+    {
+      "v3_type": "ParameterFile",
+      "v3_id": null,
+      "external_id": "envs/novatrix.parameters.json",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-15T13:10:00Z" },
+      "provenance": { "tool": "azure_arm_render", "server": "azure-tool" },
+      "relations": [],
+      "properties": { "week": 38 }
+    },
+    {
+      "v3_type": "TicketForm",
+      "v3_id": null,
+      "external_id": "rg-novatrix/novatrix-ticket-form",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-16T14:00:00Z" },
+      "provenance": { "tool": "azure_flow_register", "server": "azure-tool" },
+      "relations": [
+        {
+          "type": "writesTo",
+          "target_external_id": "/subscriptions/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/resourceGroups/rg-novatrix/providers/Microsoft.Storage/storageAccounts/stnovatrixdanlin01/blobServices/default/containers/tickets",
+          "target_v3_type": "BlobContainer"
+        }
+      ],
+      "properties": { "week": 39 }
+    },
+    {
+      "v3_type": "AutomationFlow",
+      "v3_id": null,
+      "external_id": "rg-novatrix/novatrix-ticket-flow",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-16T14:30:00Z" },
+      "provenance": { "tool": "azure_flow_register", "server": "azure-tool" },
+      "relations": [
+        {
+          "type": "triggeredBy",
+          "target_external_id": "rg-novatrix/novatrix-ticket-form",
+          "target_v3_type": "TicketForm"
+        }
+      ],
+      "properties": { "trigger": "When a new response is submitted", "week": 39 }
+    },
+    {
+      "v3_type": "TeardownPlan",
+      "v3_id": null,
+      "external_id": "rg-novatrix/daily-teardown-2026-08-19",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-19T07:00:00Z" },
+      "provenance": { "tool": "azure_teardown", "server": "azure-tool" },
+      "relations": [],
+      "properties": { "scheduled": "2026-08-19T22:00:00Z", "week": 40 }
+    },
+    {
+      "v3_type": "WeekRequirement",
+      "v3_id": null,
+      "external_id": "rg-novatrix/week-v34",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-10T07:00:00Z" },
+      "provenance": { "tool": "azure_show", "server": "azure-tool" },
+      "relations": [],
+      "properties": { "week": 34 }
+    },
+    {
+      "v3_type": "WeekRequirement",
+      "v3_id": null,
+      "external_id": "rg-novatrix/week-v35",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-11T07:00:00Z" },
+      "provenance": { "tool": "azure_show", "server": "azure-tool" },
+      "relations": [],
+      "properties": { "week": 35 }
+    },
+    {
+      "v3_type": "WeekRequirement",
+      "v3_id": null,
+      "external_id": "rg-novatrix/week-v36",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-12T07:00:00Z" },
+      "provenance": { "tool": "azure_show", "server": "azure-tool" },
+      "relations": [],
+      "properties": { "week": 36 }
+    },
+    {
+      "v3_type": "WeekRequirement",
+      "v3_id": null,
+      "external_id": "rg-novatrix/week-v37",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-13T07:00:00Z" },
+      "provenance": { "tool": "azure_show", "server": "azure-tool" },
+      "relations": [],
+      "properties": { "week": 37 }
+    },
+    {
+      "v3_type": "WeekRequirement",
+      "v3_id": null,
+      "external_id": "rg-novatrix/week-v38",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-14T07:00:00Z" },
+      "provenance": { "tool": "azure_show", "server": "azure-tool" },
+      "relations": [],
+      "properties": { "week": 38 }
+    },
+    {
+      "v3_type": "WeekRequirement",
+      "v3_id": null,
+      "external_id": "rg-novatrix/week-v39",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-15T07:00:00Z" },
+      "provenance": { "tool": "azure_show", "server": "azure-tool" },
+      "relations": [],
+      "properties": { "week": 39 }
+    },
+    {
+      "v3_type": "WeekRequirement",
+      "v3_id": null,
+      "external_id": "rg-novatrix/week-v40",
+      "origin": "azure",
+      "state_kind": "projected",
+      "temporal": { "created_at": "2026-08-16T07:00:00Z" },
+      "provenance": { "tool": "azure_show", "server": "azure-tool" },
+      "relations": [],
+      "properties": { "week": 40 }
+    }
+  ]
+}

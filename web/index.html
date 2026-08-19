@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Novatrix AB — Supportärende</title>
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; background: #fafafa; }
+    h1 { font-size: 1.5rem; }
+    form { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 1.5rem; }
+    label { display: block; margin: 0.75rem 0 0.25rem; font-weight: 600; }
+    input, select, textarea { width: 100%; box-sizing: border-box; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font: inherit; }
+    textarea { min-height: 120px; }
+    button { margin-top: 1rem; padding: 0.6rem 1.2rem; background: #0b5cad; color: #fff; border: 0; border-radius: 4px; font: inherit; cursor: pointer; }
+    button:hover { background: #094a8f; }
+    .note { color: #555; font-size: 0.85rem; }
+    #status { margin-top: 1rem; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>Novatrix AB — Supportärende</h1>
+  <p class="note">Fyll i formuläret så skapas ett ärende. Ärendet sparas på servern och skickas vidare till supporten.</p>
+
+  <form id="ticket-form" method="post" action="/ticket">
+    <label for="name">Namn</label>
+    <input type="text" id="name" name="name" required autocomplete="name">
+
+    <label for="email">E-post</label>
+    <input type="email" id="email" name="email" required autocomplete="email">
+
+    <label for="category">Kategori</label>
+    <select id="category" name="category" required>
+      <option value="">Välj kategori…</option>
+      <option value="hardware">Hårdvara</option>
+      <option value="software">Mjukvara</option>
+      <option value="network">Nätverk</option>
+      <option value="account">Konto &amp; behörighet</option>
+      <option value="other">Övrigt</option>
+    </select>
+
+    <label for="description">Beskrivning</label>
+    <textarea id="description" name="description" required placeholder="Beskriv problemet…"></textarea>
+
+    <label for="file_note">Fil (valfritt)</label>
+    <input type="text" id="file_note" name="file_note" placeholder="Namn på bifogad fil, t.ex. skärmdump.png">
+
+    <button type="submit">Skicka ärende</button>
+  </form>
+
+  <p id="status" role="status"></p>
+
+  <script>
+    const form = document.getElementById("ticket-form");
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const status = document.getElementById("status");
+      try {
+        const response = await fetch("/ticket", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams(new FormData(form)).toString(),
+        });
+        const data = await response.json();
+        status.textContent = response.ok
+          ? "Tack! Ärendet är mottaget."
+          : "Något gick fel: " + (data.error || "försök igen");
+      } catch (err) {
+        status.textContent = "Nätverksfel — försök igen.";
+      }
+    });
+  </script>
+</body>
+</html>

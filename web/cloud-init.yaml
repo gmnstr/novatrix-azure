@@ -1,0 +1,303 @@
+#cloud-config
+# Novatrix AB support ticket VM — cloud-init user data.
+# Applied by the v34 VM (infra/compute.bicep -> customData / userData).
+# Installs nginx + python3, writes the ticket form and app, runs the app on
+# 127.0.0.1:8080 via systemd, and reverse-proxies port 80 -> 8080.
+#
+# Source of truth for the embedded files: web/index.html and web/ticket_app.py.
+# Keep them in sync when editing this file.
+
+package_update: true
+packages:
+  - nginx
+  - python3
+  - python3-pip
+
+write_files:
+  - path: /var/www/novatrix/index.html
+    content: |
+      <!DOCTYPE html>
+      <html lang="sv">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Novatrix AB — Supportärende</title>
+        <style>
+          body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; background: #fafafa; }
+          h1 { font-size: 1.5rem; }
+          form { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 1.5rem; }
+          label { display: block; margin: 0.75rem 0 0.25rem; font-weight: 600; }
+          input, select, textarea { width: 100%; box-sizing: border-box; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font: inherit; }
+          textarea { min-height: 120px; }
+          button { margin-top: 1rem; padding: 0.6rem 1.2rem; background: #0b5cad; color: #fff; border: 0; border-radius: 4px; font: inherit; cursor: pointer; }
+          button:hover { background: #094a8f; }
+          .note { color: #555; font-size: 0.85rem; }
+          #status { margin-top: 1rem; font-weight: 600; }
+        </style>
+      </head>
+      <body>
+        <h1>Novatrix AB — Supportärende</h1>
+        <p class="note">Fyll i formuläret så skapas ett ärende. Ärendet sparas på servern och skickas vidare till supporten.</p>
+
+        <form id="ticket-form" method="post" action="/ticket">
+          <label for="name">Namn</label>
+          <input type="text" id="name" name="name" required autocomplete="name">
+
+          <label for="email">E-post</label>
+          <input type="email" id="email" name="email" required autocomplete="email">
+
+          <label for="category">Kategori</label>
+          <select id="category" name="category" required>
+            <option value="">Välj kategori…</option>
+            <option value="hardware">Hårdvara</option>
+            <option value="software">Mjukvara</option>
+            <option value="network">Nätverk</option>
+            <option value="account">Konto &amp; behörighet</option>
+            <option value="other">Övrigt</option>
+          </select>
+
+          <label for="description">Beskrivning</label>
+          <textarea id="description" name="description" required placeholder="Beskriv problemet…"></textarea>
+
+          <label for="file_note">Fil (valfritt)</label>
+          <input type="text" id="file_note" name="file_note" placeholder="Namn på bifogad fil, t.ex. skärmdump.png">
+
+          <button type="submit">Skicka ärende</button>
+        </form>
+
+        <p id="status" role="status"></p>
+
+        <script>
+          const form = document.getElementById("ticket-form");
+          form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const status = document.getElementById("status");
+            try {
+              const response = await fetch("/ticket", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams(new FormData(form)).toString(),
+              });
+              const data = await response.json();
+              status.textContent = response.ok
+                ? "Tack! Ärendet är mottaget."
+                : "Något gick fel: " + (data.error || "försök igen");
+            } catch (err) {
+              status.textContent = "Nätverksfel — försök igen.";
+            }
+          });
+        </script>
+      </body>
+      </html>
+
+  - path: /opt/novatrix/ticket_app.py
+    content: |
+      #!/usr/bin/env python3
+      """Novatrix AB support ticket app — guest VM code (NOT repo automation).
+
+      This file runs ON the Azure VM (installed by web/cloud-init.yaml), not in the
+      repo toolchain. The vault "no Python scripts" rule applies to repository
+      automation; this is the course application itself.
+
+      Behaviour:
+        GET  /        -> serves the ticket form (web/index.html)
+        POST /ticket  -> validates the submission and writes a JSON ticket to
+                         /var/lib/novatrix/tickets/<id>.json
+
+      If the optional azure-identity and azure-storage-blob packages are installed
+      and the VM's managed identity works, the ticket is ALSO uploaded to the
+      `tickets` blob container. Blob upload is best-effort: the app fails closed to
+      local disk, so a ticket is never lost because Azure is unreachable.
+
+      Runs on 127.0.0.1:8080 behind the nginx reverse proxy (port 80).
+      """
+
+      import json
+      import os
+      import time
+      import uuid
+      from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+      from urllib.parse import parse_qs, urlparse
+
+      TICKET_DIR = os.environ.get("NOVATRIX_TICKET_DIR", "/var/lib/novatrix/tickets")
+      FORM_PATH = os.environ.get("NOVATRIX_FORM_PATH", "/var/www/novatrix/index.html")
+      STORAGE_ACCOUNT = os.environ.get("NOVATRIX_STORAGE_ACCOUNT", "")
+      BLOB_CONTAINER = os.environ.get("NOVATRIX_BLOB_CONTAINER", "tickets")
+      HOST = os.environ.get("NOVATRIX_LISTEN_HOST", "127.0.0.1")
+      PORT = int(os.environ.get("NOVATRIX_LISTEN_PORT", "8080"))
+
+      FALLBACK_FORM = """<!DOCTYPE html>
+      <html lang="sv"><head><meta charset="utf-8"><title>Novatrix AB — Supportärende</title></head>
+      <body><h1>Novatrix AB — Supportärende</h1>
+      <form method="post" action="/ticket">
+        <label>Namn <input type="text" name="name" required></label><br>
+        <label>E-post <input type="email" name="email" required></label><br>
+        <label>Kategori <input type="text" name="category" required></label><br>
+        <label>Beskrivning <textarea name="description" required></textarea></label><br>
+        <label>Fil (valfritt) <input type="text" name="file_note"></label><br>
+        <button type="submit">Skicka ärende</button>
+      </form></body></html>
+      """
+
+
+      def upload_to_blob(ticket):
+          """Best-effort upload. Raises on any failure; caller keeps the local copy."""
+          if not STORAGE_ACCOUNT:
+              raise RuntimeError("NOVATRIX_STORAGE_ACCOUNT is empty")
+          from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
+          from azure.storage.blob import BlobServiceClient
+
+          client_id = os.environ.get("AZURE_CLIENT_ID", "").strip()
+          credential = (
+              ManagedIdentityCredential(client_id=client_id)
+              if client_id
+              else DefaultAzureCredential()
+          )
+          account_url = f"https://{STORAGE_ACCOUNT}.blob.core.windows.net"
+          client = BlobServiceClient(account_url, credential=credential)
+          blob_name = f"{ticket['id']}.json"
+          client.get_container_client(BLOB_CONTAINER).upload_blob(
+              blob_name, json.dumps(ticket, ensure_ascii=False), overwrite=False
+          )
+
+
+      class TicketHandler(BaseHTTPRequestHandler):
+          server_version = "NovatrixTicket/1.0"
+
+          def do_GET(self):
+              if urlparse(self.path).path in ("/", "/index.html"):
+                  self._send_form()
+              else:
+                  self.send_error(404)
+
+          def do_POST(self):
+              if urlparse(self.path).path != "/ticket":
+                  self.send_error(404)
+                  return
+              try:
+                  length = int(self.headers.get("Content-Length", 0) or 0)
+                  body = self.rfile.read(length).decode("utf-8", "replace")
+                  ticket = self._parse_ticket(body)
+                  self._save_ticket(ticket)
+                  self._json(201, {"ok": True, "id": ticket["id"]})
+              except ValueError as exc:
+                  self.log_error("ticket rejected: %s", exc)
+                  self._json(400, {"ok": False, "error": str(exc)})
+              except Exception as exc:  # noqa: BLE001 — guest app must keep serving
+                  self.log_error("ticket failed: %s", exc)
+                  self._json(500, {"ok": False, "error": "internal error"})
+
+          def _parse_ticket(self, body):
+              if not body:
+                  raise ValueError("empty body")
+              try:
+                  data = json.loads(body)
+              except json.JSONDecodeError:
+                  data = {k: v[0] for k, v in parse_qs(body).items()}
+              required = ("name", "email", "category", "description")
+              missing = [k for k in required if not str(data.get(k, "")).strip()]
+              if missing:
+                  raise ValueError("missing fields: " + ", ".join(missing))
+              return {
+                  "id": uuid.uuid4().hex,
+                  "received_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                  "name": str(data.get("name", "")).strip(),
+                  "email": str(data.get("email", "")).strip(),
+                  "category": str(data.get("category", "")).strip(),
+                  "description": str(data.get("description", "")).strip(),
+                  "file_note": str(data.get("file_note", "")).strip(),
+              }
+
+          def _save_ticket(self, ticket):
+              os.makedirs(TICKET_DIR, exist_ok=True)
+              path = os.path.join(TICKET_DIR, f"{ticket['id']}.json")
+              with open(path, "w", encoding="utf-8") as fh:
+                  json.dump(ticket, fh, ensure_ascii=False, indent=2)
+              try:
+                  upload_to_blob(ticket)
+              except Exception as exc:  # noqa: BLE001 — fail closed to local disk
+                  self.log_error("blob upload skipped/failed (local copy kept): %s", exc)
+
+          def _send_form(self):
+              try:
+                  with open(FORM_PATH, encoding="utf-8") as fh:
+                      html = fh.read()
+              except OSError:
+                  html = FALLBACK_FORM
+              payload = html.encode("utf-8")
+              self.send_response(200)
+              self.send_header("Content-Type", "text/html; charset=utf-8")
+              self.send_header("Content-Length", str(len(payload)))
+              self.end_headers()
+              self.wfile.write(payload)
+
+          def _json(self, code, payload):
+              data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+              self.send_response(code)
+              self.send_header("Content-Type", "application/json; charset=utf-8")
+              self.send_header("Content-Length", str(len(data)))
+              self.end_headers()
+              self.wfile.write(data)
+
+
+      def main():
+          os.makedirs(TICKET_DIR, exist_ok=True)
+          server = ThreadingHTTPServer((HOST, PORT), TicketHandler)
+          print(f"Novatrix ticket app listening on http://{HOST}:{PORT}", flush=True)
+          server.serve_forever()
+
+
+      if __name__ == "__main__":
+          main()
+
+  - path: /etc/systemd/system/novatrix-ticket.service
+    content: |
+      [Unit]
+      Description=Novatrix AB support ticket app
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=simple
+      User=www-data
+      Group=www-data
+      WorkingDirectory=/opt/novatrix
+      # Set to the deployed storage account name to enable blob upload.
+      # Empty (default) = local-only mode; the app fails closed to disk.
+      Environment=NOVATRIX_STORAGE_ACCOUNT=__NOVATRIX_STORAGE_ACCOUNT__
+      Environment=NOVATRIX_BLOB_CONTAINER=tickets
+      Environment=AZURE_CLIENT_ID=__NOVATRIX_MI_CLIENT_ID__
+      ExecStart=/usr/bin/python3 /opt/novatrix/ticket_app.py
+      Restart=on-failure
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /etc/nginx/sites-available/novatrix
+    content: |
+      server {
+          listen 80 default_server;
+          listen [::]:80 default_server;
+          server_name _;
+          client_max_body_size 2m;
+
+          location / {
+              proxy_pass http://127.0.0.1:8080;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          }
+      }
+
+runcmd:
+  - mkdir -p /var/lib/novatrix/tickets /var/www/novatrix /opt/novatrix
+  - python3 -m pip install --break-system-packages azure-identity azure-storage-blob
+  - chown -R www-data:www-data /var/lib/novatrix /var/www/novatrix /opt/novatrix
+  - chmod 755 /opt/novatrix/ticket_app.py
+  - rm -f /etc/nginx/sites-enabled/default
+  - ln -sf /etc/nginx/sites-available/novatrix /etc/nginx/sites-enabled/novatrix
+  - systemctl daemon-reload
+  - systemctl enable --now novatrix-ticket
+  - systemctl enable nginx
+  - systemctl restart nginx

@@ -1,0 +1,11 @@
+{
+  "name": "novatrix-azure",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "validate-ontology": "bun scripts/validate-ontology.ts",
+    "validate-graph": "bun scripts/validate-graph.ts",
+    "check-sync": "bun scripts/check-cloud-init-sync.ts",
+    "bicep-build": "./scripts/bicep-build.sh"
+  }
+}
